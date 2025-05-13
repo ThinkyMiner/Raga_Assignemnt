@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Determine the project root directory (one level up from 'app')
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Add project root to sys.path to allow consistent .env loading by services
+# Add project root to sys.path
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
@@ -21,7 +21,6 @@ else:
     print(f"Warning: .env file not found at {DOTENV_PATH}. Service ports might use defaults.")
 
 # Configuration for services
-# Each entry: (service_name, script_path_relative_to_project_root, port_env_variable, default_port)
 SERVICES_CONFIG = [
     ("API Service", "services/api_service.py", "API_PORT", 8000),
     ("Scraping Service", "services/scraping_service.py", "SCRAPING_SERVICE_PORT", 8001),
@@ -43,18 +42,18 @@ def signal_handler(sig, frame):
     # Wait for processes to terminate
     for p_info in processes:
         try:
-            p_info['process'].wait(timeout=5) # Wait up to 5 seconds
+            p_info['process'].wait(timeout=5)
         except subprocess.TimeoutExpired:
             print(f"{p_info['name']} (PID: {p_info['process'].pid}) did not terminate gracefully, killing...")
-            p_info['process'].kill() # Force kill if still running
+            p_info['process'].kill()
         except Exception as e:
             print(f"Error waiting for {p_info['name']}: {e}")
 
     print("All services shut down.")
     sys.exit(0)
 
-signal.signal(signal.SIGINT, signal_handler) # Handle Ctrl+C
-signal.signal(signal.SIGTERM, signal_handler) # Handle kill command
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 def start_services():
     print("--- Starting All Microservices ---")

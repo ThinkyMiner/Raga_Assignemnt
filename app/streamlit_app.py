@@ -82,43 +82,6 @@ if st.button("Get Briefing", disabled=st.session_state.query_in_progress):
                     # Check if response is audio
                     if 'audio/' in response.headers.get('Content-Type', '').lower():
                         st.session_state.audio_response_bytes = response.content
-                        # Attempt to get text response from a custom header or a JSON part if multipart
-                        # For now, we assume orchestrator might not easily send both text and audio stream in one go
-                        # A common pattern is to make a second request for text details if needed,
-                        # or the orchestrator could return a JSON with text and a *link* to audio.
-                        # For simplicity, we'll try to decode a potential JSON response if not audio.
-                        # However, our orchestrator currently sends audio directly.
-                        # We need a way to get the text part.
-                        # Let's assume for now the orchestrator *also* returns a JSON if it's not an audio stream
-                        # This part needs refinement based on actual orchestrator capability for voice + text.
-                        # For now, we'll just indicate success. The orchestrator currently returns text_response in JSON for voice.
-                        # This is a bit tricky as the primary response IS the audio stream.
-                        # A better way: orchestrator returns JSON with text and *link* or base64 audio.
-                        # Current orchestrator returns JSON like:
-                        # {"text_response": "...", "voice_response_bytes": "...", "content_type": "audio/mpeg"}
-                        # This is not how a direct audio stream response works.
-                        # The current orchestrator_service.py returns StreamingResponse for voice.
-                        # Let's adjust the Streamlit app to expect this.
-                        # If output is voice, the primary content IS the audio.
-                        # We need a way to also get the text.
-                        # For now, let's assume the orchestrator *always* returns the text in a JSON field,
-                        # even if the main content is audio. This is not standard for StreamingResponse.
-                        # The orchestrator's /orchestrate/query endpoint returns JSON with text_response
-                        # and then streams audio if output_format is voice.
-                        # This means the `response.json()` call below might fail if it was a pure audio stream.
-
-                        # The orchestrator service was modified to return a JSON response containing
-                        # text_response and voice_response_bytes (as base64 or similar) if output is voice.
-                        # Let's re-check orchestrator_service.py.
-                        # It returns StreamingResponse(io.BytesIO(audio_bytes), media_type=content_type)
-                        # This means response.content is the audio. There's no JSON body for voice.
-                        # This is a design choice: either stream audio, or send JSON with embedded/linked audio.
-
-                        # To get both, the orchestrator would need to:
-                        # 1. Return JSON with text and base64 encoded audio.
-                        # 2. Return JSON with text and a URL to *another* endpoint that streams the audio.
-
-                        # For now, if voice, we have the audio. We'll make a SECOND call for text only.
                         st.session_state.text_response = "Voice response generated. Playing below." # Placeholder
                         
                         # Make a second call to get the text part
@@ -136,8 +99,6 @@ if st.button("Get Briefing", disabled=st.session_state.query_in_progress):
                         st.session_state.text_response = json_response.get("text_response")
                         st.session_state.analysis_details = json_response.get("analysis_details")
                         if "voice_response_bytes" in json_response and json_response["voice_response_bytes"]:
-                             # This would be if orchestrator sent base64 audio in JSON
-                             # For now, we assume direct stream for voice, so this path is less likely with current orchestrator
                             st.session_state.audio_response_bytes = base64.b64decode(json_response["voice_response_bytes"])
 
                 else: # Text output format
