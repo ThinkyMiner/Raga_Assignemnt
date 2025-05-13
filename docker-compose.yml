@@ -1,0 +1,155 @@
+version: '3.8'
+
+services:
+  api_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api_service
+    command: uvicorn services.api_service:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  scraping_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scraping_service
+    command: uvicorn services.scraping_service:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  retriever_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: retriever_service
+    command: uvicorn services.retriever_service:app --host 0.0.0.0 --port 8002 --reload
+    volumes:
+      - .:/app
+      - ./data/vector_store:/app/data/vector_store # Mount vector store data
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  language_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: language_service
+    command: uvicorn services.language_service:app --host 0.0.0.0 --port 8003 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Add any model-specific environment variables if needed (e.g., for Hugging Face cache)
+      # - TRANSFORMERS_CACHE=/app/.cache/huggingface/transformers
+      # - HF_HOME=/app/.cache/huggingface
+
+  analysis_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: analysis_service
+    command: uvicorn services.analysis_service:app --host 0.0.0.0 --port 8004 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8004:8004"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  voice_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voice_service
+    command: uvicorn services.voice_service:app --host 0.0.0.0 --port 8005 --reload
+    volumes:
+      - .:/app
+      # Mount a directory for temporary voice files if your service writes them to disk
+      # - ./agents/_temp_voice_files:/app/agents/_temp_voice_files
+    ports:
+      - "8005:8005"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  orchestrator_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: orchestrator_service
+    command: uvicorn services.orchestrator_service:app --host 0.0.0.0 --port 8006 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8006:8006"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - API_SERVICE_URL=http://api_service:8000
+      - SCRAPING_SERVICE_URL=http://scraping_service:8001
+      - RETRIEVER_SERVICE_URL=http://retriever_service:8002
+      - LANGUAGE_SERVICE_URL=http://language_service:8003
+      - ANALYSIS_SERVICE_URL=http://analysis_service:8004
+      - VOICE_SERVICE_URL=http://voice_service:8005
+    depends_on:
+      - api_service
+      - scraping_service
+      - retriever_service
+      - language_service
+      - analysis_service
+      - voice_service
+
+  streamlit_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: streamlit_app
+    command: streamlit run app/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ORCHESTRATOR_SERVICE_URL=http://orchestrator_service:8006 # Crucial for Streamlit to find orchestrator
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false # Add if you encounter XSRF issues with POST
+    depends_on:
+      - orchestrator_service
+
+# Optional: Define a network if you want to isolate them
+# networks:
+#   app_network:
+#     driver: bridge
+
+# Optional: Define volumes if you need persistent data outside of bind mounts
+# volumes:
+#   vector_store_data:
+#   huggingface_cache:
