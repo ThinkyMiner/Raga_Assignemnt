@@ -82,7 +82,7 @@ if st.button("Get Briefing", disabled=st.session_state.query_in_progress):
                     # Check if response is audio
                     if 'audio/' in response.headers.get('Content-Type', '').lower():
                         st.session_state.audio_response_bytes = response.content
-                        st.session_state.text_response = "Voice response generated. Playing below." # Placeholder
+                        st.session_state.text_response = "Voice response generated. Playing below."
                         
                         # Make a second call to get the text part
                         text_payload = {"query": query, "output_format": "text"}
