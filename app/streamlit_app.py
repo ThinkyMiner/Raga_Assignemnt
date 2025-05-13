@@ -3,10 +3,14 @@ import requests
 import os
 import base64
 import io
+import json
 
 # Configuration
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_SERVICE_URL", "http://localhost:8006")
 ORCHESTRATOR_QUERY_ENDPOINT = f"{ORCHESTRATOR_URL}/orchestrate/query/"
+
+# Determine if we're running on Streamlit Cloud
+is_streamlit_cloud = os.getenv("STREAMLIT_SHARING", "") == "True" or os.getenv("STREAMLIT_SERVER_HEADLESS", "") == "True"
 
 st.set_page_config(layout="wide", page_title="Finance Assistant")
 
@@ -48,12 +52,30 @@ if st.button("Get Briefing", disabled=st.session_state.query_in_progress):
         st.info("Processing your query... This may take a moment.")
 
         try:
-            payload = {
-                "query": query,
-                "output_format": "voice" if output_format == "Voice" else "text"
-            }
-            
-            response = requests.post(ORCHESTRATOR_QUERY_ENDPOINT, json=payload, timeout=180) # Increased timeout
+            if is_streamlit_cloud:
+                # Mock response for Streamlit Cloud
+                st.session_state.text_response = (
+                    "This is a demo version running on Streamlit Cloud. "
+                    "In this environment, the backend services are not available.\n\n"
+                    f"Your query was: **{query}**\n\n"
+                    "To run the full application with all services, please run it locally "
+                    "following the instructions in the README.md file."
+                )
+                # Add some mock analysis details for demonstration
+                st.session_state.analysis_details = {
+                    "query": query,
+                    "source_count": 3,
+                    "sentiment": "neutral",
+                    "key_entities": ["finance", "stocks", "investment"],
+                    "note": "This is simulated data for the cloud demo."
+                }
+            else:
+                payload = {
+                    "query": query,
+                    "output_format": "voice" if output_format == "Voice" else "text"
+                }
+                
+                response = requests.post(ORCHESTRATOR_QUERY_ENDPOINT, json=payload, timeout=180) # Increased timeout
 
             if response.status_code == 200:
                 if payload["output_format"] == "voice":
@@ -141,7 +163,8 @@ if st.button("Get Briefing", disabled=st.session_state.query_in_progress):
                 "Please ensure it's running and accessible."
             )
         except Exception as e:
-            st.session_state.error_message = f"An unexpected error occurred: {str(e)}"
+            if not is_streamlit_cloud:  # Don't show technical errors in the cloud demo
+                st.session_state.error_message = f"An unexpected error occurred: {str(e)}"
         finally:
             st.session_state.query_in_progress = False
             st.rerun() # Rerun to update UI based on new state
